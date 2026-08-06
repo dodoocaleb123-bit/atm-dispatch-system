@@ -14,21 +14,25 @@ export default function BankLogin() {
     setLoading(true);
     setErrorMsg('');
 
-    // Check credentials against banks table
-    const { data: bank, error } = await supabase
-      .from('banks')
-      .select('*')
-      .eq('username', username)
-      .eq('password', password)
-      .single();
+    try {
+      const { data: bank, error } = await supabase
+        .from('banks')
+        .select('*')
+        .eq('username', username)
+        .eq('password', password)
+        .single();
 
-    if (bank && !error) {
-      // Directs the bank to its own isolated dynamic dashboard!
-      router.push(`/bank/${bank.slug}/dashboard`);
-    } else {
-      setErrorMsg('Invalid Bank Username or Password.');
+      if (bank && !error) {
+        // Redirects to /bank/[slug]/dashboard
+        router.push(`/bank/${bank.slug}/dashboard`);
+      } else {
+        setErrorMsg('Invalid Bank Username or Password.');
+      }
+    } catch (err) {
+      setErrorMsg('Login failed. Please check credentials.');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   return (
@@ -50,19 +54,23 @@ export default function BankLogin() {
 
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-slate-400 uppercase mb-1">Bank Username</label>
+            <label className="block text-xs font-semibold text-slate-400 uppercase mb-1">
+              Bank Username
+            </label>
             <input
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              placeholder="e.g. ecobank"
+              placeholder="e.g. CBG"
               className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-400 uppercase mb-1">Password</label>
+            <label className="block text-xs font-semibold text-slate-400 uppercase mb-1">
+              Password
+            </label>
             <input
               type="password"
               value={password}
@@ -76,7 +84,7 @@ export default function BankLogin() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl text-xs transition"
+            className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-bold py-3 rounded-xl text-xs transition"
           >
             {loading ? 'Authenticating...' : 'Access Portal'}
           </button>

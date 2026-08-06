@@ -13,35 +13,34 @@ export default function AddBankModal({ onBankCreated }) {
     setLoading(true);
     setErrorMessage('');
 
-    // Automatically create a URL slug from the bank code or username (e.g. "CBG" -> "cbg")
+    // Generate clean slug from bank code
     const generatedSlug = bankCode.trim().toLowerCase().replace(/[^a-z0-9]/g, '-');
 
     try {
-      // 1. Insert into your Supabase 'banks' table
       const { data, error } = await supabase
         .from('banks')
         .insert([
           {
             name: bankName,
-            username: bankCode, // Uses bank code as the username
+            username: bankCode,
             code: bankCode,
             password: password,
             slug: generatedSlug,
           },
-        ]);
+        ])
+        .select(); // <-- CRITICAL: Added .select() to prevent API URL path errors
 
       if (error) {
         setErrorMessage(error.message);
-        alert(`Error creating bank: ${error.message}`);
       } else {
-        alert(`Bank account created successfully!\nLogin URL: /bank/${generatedSlug}/dashboard`);
+        alert(`Bank created successfully!\nLogin URL: /bank/${generatedSlug}/dashboard`);
         setBankName('');
         setBankCode('');
         setPassword('');
         if (onBankCreated) onBankCreated();
       }
     } catch (err) {
-      setErrorMessage(err.message);
+      setErrorMessage(err.message || 'An unexpected error occurred');
     } finally {
       setLoading(false);
     }
@@ -106,13 +105,7 @@ export default function AddBankModal({ onBankCreated }) {
             disabled={loading}
             className="w-full bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white font-bold py-3 rounded-xl text-xs transition shadow-lg shadow-purple-600/20 flex items-center justify-center space-x-2"
           >
-            {loading ? (
-              <span>Registering Bank...</span>
-            ) : (
-              <>
-                <span>+ Register Partner Bank</span>
-              </>
-            )}
+            {loading ? 'Registering Bank...' : '+ Register Partner Bank'}
           </button>
         </div>
       </form>
