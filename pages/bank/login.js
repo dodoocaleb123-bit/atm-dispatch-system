@@ -1,120 +1,101 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/router';
-import { supabase } from '../../../lib/supabaseClient';
+import { supabase } from '../../lib/supabaseClient';
 
-export default function BankDashboard() {
+export default function BankLogin() {
   const router = useRouter();
-  const { slug } = router.query;
-
-  const [bank, setBank] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [password, setPassword] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    // 1. Wait until Next.js router has finished initializing query parameters
-    if (!router.isReady || !slug) return;
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setErrorMsg('');
 
-    const fetchBankData = async () => {
-      setLoading(true);
-      setErrorMsg('');
+    try {
+      const inputPassword = password.trim();
 
-      try {
-        const formattedSlug = slug.toString().trim();
+      // Fetch bank records to match against the entered password
+      const { data: banks, error } = await supabase
+        .from('banks')
+        .select('*');
 
-        // 2. Fetch all banks to ensure a fail-safe match in JavaScript
-        const { data: banks, error } = await supabase
-          .from('banks')
-          .select('*');
+      if (error || !banks) {
+        setErrorMsg('Unable to connect to service. Please try again.');
+        return;
+      }
 
-        if (error || !banks || banks.length === 0) {
-          setErrorMsg('Failed to connect to banks database.');
+      // Find the bank matching either access_password or access_key
+      const matchedBank = banks.find(
+        (b) => b.access_password === inputPassword || b.access_key === inputPassword
+      );
+
+      if (matchedBank) {
+        const slug = (
+          matchedBank.bank_code || 
+          matchedBank.acronym || 
+          matchedBank.slug || 
+          ''
+        ).toLowerCase();
+
+        if (!slug) {
+          setErrorMsg('Bank code error. Please contact system admin.');
           return;
         }
 
-        // 3. Match slug against bank_code, acronym, slug, or name (case-insensitive)
-        const matchedBank = banks.find((b) => {
-          const code = (b.bank_code || '').toString().toLowerCase();
-          const acronym = (b.acronym || '').toString().toLowerCase();
-          const bankSlug = (b.slug || '').toString().toLowerCase();
-          const target = formattedSlug.toLowerCase();
-
-          return code === target || acronym === target || bankSlug === target;
-        });
-
-        if (matchedBank) {
-          setBank(matchedBank);
-        } else {
-          setErrorMsg(`Bank portal "${formattedSlug}" not found in database.`);
-        }
-      } catch (err) {
-        setErrorMsg('Error loading dashboard data.');
-      } finally {
-        setLoading(false);
+        // 🚀 Redirects straight to the bank's specific dashboard
+        router.push(`/bank/${slug}/dashboard`);
+      } else {
+        setErrorMsg('Invalid Bank Access Password.');
       }
-    };
-
-    fetchBankData();
-  }, [router.isReady, slug]);
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-slate-400 text-xs space-y-2">
-        <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-        <p>Loading portal...</p>
-      </div>
-    );
-  }
-
-  if (errorMsg || !bank) {
-    return (
-      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4">
-        <div className="max-w-md w-full bg-slate-900 border border-slate-800 rounded-2xl p-6 text-center space-y-4">
-          <div className="text-red-400 text-xs font-mono">{errorMsg}</div>
-          <button
-            onClick={() => router.push('/bank/login')}
-            className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white text-xs rounded-xl transition"
-          >
-            Return to Login
-          </button>
-        </div>
-      </div>
-    );
-  }
+    } catch (err) {
+      setErrorMsg('Login failed. Please check your connection.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white p-8">
-      <div className="max-w-6xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-800 pb-4">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-xl">
-              🏛️
-            </div>
-            <div>
-              <h1 className="text-xl font-bold">
-                {bank.name || bank.bank_name || bank.bank_code || 'Bank'} Portal
-              </h1>
-              <p className="text-xs text-slate-400">
-                Code: <span className="font-mono text-blue-400">{bank.bank_code || bank.acronym}</span>
-              </p>
-            </div>
+    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
+      <div className="max-w-md w-full bg-slate-900 border border-slate-800 rounded-2xl p-8 space-y-6">
+        <div className="text-center">
+          <div className="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center mx-auto text-2xl mb-3">
+            🏛️
+          </div>
+          <h1 className="text-xl font-bold text-white">Bank Partner Portal</h1>
+          <p className="text-xs text-slate-400 mt-1">Enter your assigned Access Password to open your dashboard</p>
+        </div>
+
+        {errorMsg && (
+          <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-400 rounded-xl text-xs text-center">
+            {errorMsg}
+          </div>
+        )}
+
+        <form onSubmit={handleLogin} className="space-y-4">
+          <div>
+            <label className="block text-xs font-semibold text-slate-400 uppercase mb-1">
+              Access Password
+            </label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
+              className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              required
+            />
           </div>
 
           <button
-            onClick={() => router.push('/bank/login')}
-            className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-xs rounded-xl transition"
+            type="submit"
+            disabled={loading}
+            className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-bold py-3 rounded-xl text-xs transition shadow-lg shadow-blue-600/20"
           >
-            Sign Out
+            {loading ? 'Authenticating...' : 'Access Bank Dashboard'}
           </button>
-        </div>
-
-        {/* Console Box */}
-        <div className="p-6 bg-slate-900 border border-slate-800 rounded-2xl space-y-3">
-          <h2 className="text-sm font-semibold text-slate-200">Incident & Dispatch Console</h2>
-          <p className="text-xs text-slate-400">
-            Welcome to the dedicated portal for {bank.name || bank.bank_code}. You can monitor active ATM terminal tickets and dispatches here.
-          </p>
-        </div>
+        </form>
       </div>
     </div>
   );
