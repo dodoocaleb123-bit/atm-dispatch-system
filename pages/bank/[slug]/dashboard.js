@@ -25,18 +25,17 @@ export default function BankDashboard() {
       if (atmError) console.error('ATM Fetch Error:', atmError.message);
 
       const bankAtms = (atmData || []).filter(a => 
-  (a.bank_code && a.bank_code.toString().toLowerCase() === bankCode.toLowerCase()) ||
-  a.bank_id === currentBank.id
-);
-setAtms(bankAtms);
+        (a.bank_code && a.bank_code.toString().toLowerCase() === bankCode.toLowerCase()) ||
+        a.bank_id === currentBank.id
+      );
+      setAtms(bankAtms);
 
-// Automatically select the first ATM's UUID if available
-// Automatically select the first ATM's UUID if available
-if (bankAtms.length > 0 && !selectedAtmUuid) {
-  setSelectedAtmUuid(bankAtms[0].id);
-}
+      // Automatically select the first ATM's UUID if available
+      if (bankAtms.length > 0 && !selectedAtmUuid) {
+        setSelectedAtmUuid(bankAtms[0].id);
+      }
 
-      // 2. Fetch service tickets for this bank
+      // 2. Fetch service tickets for this bank from service_tickets
       const { data: ticketData, error: ticketError } = await supabase
         .from('service_tickets')
         .select('*')
@@ -111,10 +110,11 @@ if (bankAtms.length > 0 && !selectedAtmUuid) {
     setLoading(true);
     setMessage('');
 
+    // Insert into service_tickets using fault_description column matching your database schema
     const { error } = await supabase.from('service_tickets').insert([
       {
         bank_id: bank.id,
-        atm_id: selectedAtmUuid, // Explicitly passing the UUID
+        atm_id: selectedAtmUuid,
         fault_description: faultDescription,
         priority: priority,
         status: 'PENDING',
@@ -124,7 +124,7 @@ if (bankAtms.length > 0 && !selectedAtmUuid) {
     setLoading(false);
 
     if (!error) {
-      setMessage('Fault ticket successfully filed.');
+      setMessage('Fault ticket successfully filed and sent to CEO Dispatch!');
       setFaultDescription('');
       setSelectedAtmUuid('');
       fetchDashboardData(bank);
@@ -218,17 +218,17 @@ if (bankAtms.length > 0 && !selectedAtmUuid) {
                   Select ATM Terminal ID
                 </label>
                 <select
-  value={selectedAtmUuid}
-  onChange={(e) => setSelectedAtmUuid(e.target.value)}
-  className="w-full bg-slate-950 border border-slate-800 text-white rounded-xl px-4 py-3 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-  required
->
-  {atms.map((atm) => (
-    <option key={atm.id} value={atm.id}>
-      {atm.serial_number || atm.atm_serial || `Terminal ID: ${atm.id}`}
-    </option>
-  ))}
-</select>
+                  value={selectedAtmUuid}
+                  onChange={(e) => setSelectedAtmUuid(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 text-white rounded-xl px-4 py-3 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                  required
+                >
+                  {atms.map((atm) => (
+                    <option key={atm.id} value={atm.id}>
+                      {atm.serial_number || atm.atm_serial || `Terminal ID: ${atm.id}`}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div>

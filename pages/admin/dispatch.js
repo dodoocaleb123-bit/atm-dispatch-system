@@ -16,20 +16,36 @@ export default function AdminDispatch() {
     const loadDispatchData = async () => {
       setLoading(true);
       try {
-        // Fetch all tickets with related bank, atm, and engineer info
+        // Query the correct table: service_tickets
         const { data: ticketData, error: ticketErr } = await supabase
-          .from('tickets')
-          .select('*, banks(*), atms(*), engineers(*)')
+          .from('service_tickets')
+          .select('*')
           .order('created_at', { ascending: false });
 
-        if (ticketErr) console.error('Error fetching tickets:', ticketErr);
-        else setTickets(ticketData || []);
+        if (ticketErr) {
+          console.error('Error fetching service tickets:', ticketErr);
+        } else {
+          // Fetch related banks, atms, and engineers
+          const { data: bankData } = await supabase.from('banks').select('*');
+          const { data: atmData } = await supabase.from('atms').select('*');
+          const { data: engData } = await supabase.from('engineers').select('*');
 
-        // Fetch engineers for assignment dropdowns
-        const { data: engData, error: engErr } = await supabase.from('engineers').select('*');
-        if (engErr) console.error('Error fetching engineers:', engErr);
-        else setEngineers(engData || []);
+          const enrichedTickets = (ticketData || []).map(ticket => {
+            const matchedBank = (bankData || []).find(b => b.id === ticket.bank_id);
+            const matchedAtm = (atmData || []).find(a => a.id === ticket.atm_id);
+            const matchedEng = (engData || []).find(e => e.id === ticket.assigned_engineer_id);
+            return {
+              ...ticket,
+              banks: matchedBank,
+              atms: matchedAtm,
+              engineers: matchedEng,
+              description: ticket.fault_description // map schema column
+            };
+          });
 
+          setTickets(enrichedTickets);
+          setEngineers(engData || []);
+        }
       } catch (err) {
         console.error('Initialization error:', err);
       } finally {
