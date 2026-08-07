@@ -111,12 +111,9 @@ export default function BankDashboard() {
     setLoading(true);
     setMessage('');
 
-    const bankCode = bank.bank_code || bank.slug || slug;
-
-    // Removed 'atm_serial' to match your Supabase database table schema requirements
+    // Removed 'bank_code' from the payload to match your Supabase table schema
     const { error } = await supabase.from('service_tickets').insert([
       {
-        bank_code: bankCode,
         bank_id: bank.id,
         atm_id: selectedAtm,
         issue_description: faultDescription,
