@@ -218,11 +218,15 @@ export default function BankDashboard() {
                   required
                 >
                   <option value="">-- Choose an ATM Terminal --</option>
-                  {atms.map((atm) => (
-                    <option key={atm.id} value={atm.id}>
-                      {atm.serial_number || atm.atm_serial || `ATM ID`} {atm.location_details ? `— ${atm.location_details}` : ''}
-                    </option>
-                  ))}
+                  {atms.map((atm) => {
+                    const atmId = atm.id || atm.atm_id;
+                    const atmLabel = atm.serial_number || atm.atm_serial || atm.id;
+                    return (
+                      <option key={atmId} value={atmId}>
+                        {atmLabel} {atm.location_details ? `— ${atm.location_details}` : ''}
+                      </option>
+                    );
+                  })}
                 </select>
               </div>
 
