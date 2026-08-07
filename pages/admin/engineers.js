@@ -164,9 +164,9 @@ export default function AdminEngineersPage() {
                   <p className="text-slate-400 font-mono text-xs">
                     Code: <span className="text-blue-400 font-bold">{eng.engineer_code}</span>
                   </p>
-                  {/* 👈 Password display line added here */}
+                  {/* Password with multi-column fallback */}
                   <p className="text-slate-500 text-[10px] font-mono">
-                    Password: <span className="text-slate-300 font-semibold">{eng.access_password}</span>
+                    Password: <span className="text-slate-300 font-semibold">{eng.access_password || eng.access_key || 'N/A'}</span>
                   </p>
                 </div>
                 <div>
