@@ -4,39 +4,70 @@ import { supabase } from '../../../lib/supabaseClient';
 
 export default function EngineerDashboard() {
   const router = useRouter();
-  const { id } = router.query; // Extracts engineer_code from URL (e.g. "eng-001")
+  const { id } = router.query; // Extracts engineer_code from URL (e.g. "eng-002")
 
   const [engineer, setEngineer] = useState(null);
+  const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState('');
 
   useEffect(() => {
-    // Wait until router is ready and id is available
     if (!router.isReady || !id) return;
 
-    const fetchEngineerProfile = async () => {
+    const fetchDashboardData = async () => {
       setLoading(true);
       try {
-        // Case-insensitive query to find engineer profile
-        const { data, error } = await supabase
+        // 1. Fetch engineer profile using case-insensitive query on engineer_code
+        const { data: engData, error: engError } = await supabase
           .from('engineers')
           .select('*')
           .ilike('engineer_code', id)
           .single();
 
-        if (error || !data) {
+        if (engError || !engData) {
           setErrorMsg('Engineer profile not found.');
+          setLoading(false);
+          return;
+        }
+
+        setEngineer(engData);
+
+        // 2. Fetch service tickets assigned to this engineer (matching their UUID id)
+        const { data: ticketData, error: ticketError } = await supabase
+          .from('service_tickets')
+          .select('*')
+          .eq('assigned_engineer_id', engData.id)
+          .order('created_at', { ascending: false });
+
+        if (ticketError) {
+          console.error('Error fetching tickets:', ticketError);
         } else {
-          setEngineer(data);
+          // Fetch related banks and ATMs to enrich ticket details
+          const { data: bankData } = await supabase.from('banks').select('*');
+          const { data: atmData } = await supabase.from('atms').select('*');
+
+          const enrichedTickets = (ticketData || []).map(ticket => {
+            const matchedBank = (bankData || []).find(b => b.id === ticket.bank_id);
+            const matchedAtm = (atmData || []).find(a => a.id === ticket.atm_id);
+            return {
+              ...ticket,
+              banks: matchedBank,
+              atms: matchedAtm,
+              description: ticket.fault_description
+            };
+          });
+
+          setTickets(enrichedTickets);
         }
       } catch (err) {
+        console.error('Initialization error:', err);
         setErrorMsg('Failed to load dashboard data.');
       } finally {
         setLoading(false);
       }
     };
 
-    fetchEngineerProfile();
+    fetchDashboardData();
   }, [router.isReady, id]);
 
   const handleLogout = () => {
@@ -66,6 +97,11 @@ export default function EngineerDashboard() {
       </div>
     );
   }
+
+  // Calculate metrics
+  const assignedCount = tickets.filter(t => t.status === 'ASSIGNED' || t.status === 'PENDING').length;
+  const inProgressCount = tickets.filter(t => t.status === 'IN_PROGRESS').length;
+  const completedCount = tickets.filter(t => t.status === 'RESOLVED' || t.status === 'COMPLETED').length;
 
   return (
     <div className="min-h-screen bg-slate-950 text-white p-6">
@@ -101,15 +137,15 @@ export default function EngineerDashboard() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-1">
             <p className="text-slate-400 text-[10px] font-semibold uppercase tracking-wider">Assigned Tickets</p>
-            <p className="text-2xl font-bold text-white">0</p>
+            <p className="text-2xl font-bold text-white">{assignedCount}</p>
           </div>
           <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-1">
             <p className="text-slate-400 text-[10px] font-semibold uppercase tracking-wider">In Progress</p>
-            <p className="text-2xl font-bold text-amber-400">0</p>
+            <p className="text-2xl font-bold text-amber-400">{inProgressCount}</p>
           </div>
           <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-1">
             <p className="text-slate-400 text-[10px] font-semibold uppercase tracking-wider">Completed</p>
-            <p className="text-2xl font-bold text-emerald-400">0</p>
+            <p className="text-2xl font-bold text-emerald-400">{completedCount}</p>
           </div>
         </div>
 
@@ -120,9 +156,29 @@ export default function EngineerDashboard() {
             <span className="text-xs text-slate-500 font-mono">Real-time sync</span>
           </div>
 
-          <div className="p-12 text-center border border-dashed border-slate-800 rounded-xl bg-slate-950/50">
-            <p className="text-slate-500 text-xs">No active dispatch jobs currently assigned to {engineer.name}.</p>
-          </div>
+          {tickets.length === 0 ? (
+            <div className="p-12 text-center border border-dashed border-slate-800 rounded-xl bg-slate-950/50">
+              <p className="text-slate-500 text-xs">No active dispatch jobs currently assigned to {engineer.name}.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {tickets.map((ticket) => (
+                <div key={ticket.id} className="bg-slate-950 border border-slate-800 p-5 rounded-xl space-y-3">
+                  <div className="flex justify-between items-start">
+                    <span className="font-mono text-xs font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded">
+                      {ticket.atms?.serial_number || ticket.atms?.atm_serial || 'ATM Terminal'}
+                    </span>
+                    <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                      {ticket.status || 'ASSIGNED'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-300 font-semibold">Bank: {ticket.banks?.name || ticket.banks?.bank_name || 'N/A'}</p>
+                  <p className="text-xs text-slate-200">{ticket.description}</p>
+                  <p className="text-[11px] text-slate-400 font-mono">Location: {ticket.atms?.location_details}</p>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>
