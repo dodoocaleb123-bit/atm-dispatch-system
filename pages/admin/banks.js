@@ -18,17 +18,17 @@ export default function AddBankModal({ onBankCreated }) {
 
     try {
       const { data, error } = await supabase
-        .from('banks')
-        .insert([
-          {
-            name: bankName,
-            username: bankCode,
-            code: bankCode,
-            password: password,
-            slug: generatedSlug,
-          },
-        ])
-        .select(); // <-- CRITICAL: Added .select() to prevent API URL path errors
+  .from('banks')
+  .insert([
+    {
+      name: bankName,
+      username: bankCode, // Storing code here as username
+      password: password,
+      slug: generatedSlug,
+      // Removed "code: bankCode" since that column doesn't exist in Supabase
+    },
+  ])
+  .select(); // <-- CRITICAL: Added .select() to prevent API URL path errors
 
       if (error) {
         setErrorMessage(error.message);
