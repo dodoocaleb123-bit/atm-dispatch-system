@@ -10,6 +10,7 @@ export default function EngineerDashboard() {
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState('');
+  const [message, setMessage] = useState('');
 
   useEffect(() => {
     if (!router.isReady || !id) return;
@@ -74,6 +75,24 @@ export default function EngineerDashboard() {
     router.push('/engineer/portal');
   };
 
+  const handleResolveTicket = async (ticketId) => {
+    const { error } = await supabase
+      .from('service_tickets')
+      .update({ 
+        status: 'RESOLVED',
+        resolved_at: new Date().toISOString()
+      })
+      .eq('id', ticketId);
+
+    if (!error) {
+      setTickets(tickets.map(t => t.id === ticketId ? { ...t, status: 'RESOLVED' } : t));
+      setMessage('Work order successfully marked as resolved and submitted to CEO & Bank.');
+      setTimeout(() => setMessage(''), 4000);
+    } else {
+      setMessage(`Error updating ticket: ${error.message}`);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center text-slate-400 text-xs">
@@ -133,6 +152,12 @@ export default function EngineerDashboard() {
           </div>
         </header>
 
+        {message && (
+          <div className="p-4 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-xl text-xs font-medium">
+            {message}
+          </div>
+        )}
+
         {/* Quick Metrics */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-1">
@@ -168,13 +193,28 @@ export default function EngineerDashboard() {
                     <span className="font-mono text-xs font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded">
                       {ticket.atms?.serial_number || ticket.atms?.atm_serial || 'ATM Terminal'}
                     </span>
-                    <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                    <span className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded border ${
+                      ticket.status === 'RESOLVED' || ticket.status === 'COMPLETED'
+                        ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                        : 'bg-blue-500/10 text-blue-400 border-blue-500/20'
+                    }`}>
                       {ticket.status || 'ASSIGNED'}
                     </span>
                   </div>
                   <p className="text-xs text-slate-300 font-semibold">Bank: {ticket.banks?.name || ticket.banks?.bank_name || 'N/A'}</p>
                   <p className="text-xs text-slate-200">{ticket.description}</p>
                   <p className="text-[11px] text-slate-400 font-mono">Location: {ticket.atms?.location_details}</p>
+
+                  {ticket.status !== 'RESOLVED' && ticket.status !== 'COMPLETED' && (
+                    <div className="pt-2 border-t border-slate-800">
+                      <button
+                        onClick={() => handleResolveTicket(ticket.id)}
+                        className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 rounded-xl text-xs transition shadow-lg"
+                      >
+                        Mark as Resolved / Complete Work
+                      </button>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
