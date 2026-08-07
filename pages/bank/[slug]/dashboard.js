@@ -218,22 +218,19 @@ export default function BankDashboard() {
                 <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
                   ATM ID / Serial Number
                 </label>
-                <input
-                  type="text"
-                  list="atm-list"
+                <select
                   value={selectedAtm}
                   onChange={(e) => setSelectedAtm(e.target.value)}
-                  placeholder="Type or select ATM ID..."
-                  className="w-full bg-slate-950 border border-slate-800 text-white placeholder-slate-600 rounded-xl px-4 py-3 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                  className="w-full bg-slate-950 border border-slate-800 text-white rounded-xl px-4 py-3 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
                   required
-                />
-                <datalist id="atm-list">
+                >
+                  <option value="">-- Choose an ATM Terminal --</option>
                   {atms.map((atm) => (
-                    <option key={atm.id} value={atm.serial_number || atm.atm_serial || atm.id}>
-                      {atm.location_details ? `${atm.location_details}` : ''}
+                    <option key={atm.id} value={atm.id}>
+                      {atm.serial_number || atm.atm_serial || `ATM ID: ${atm.id}`} {atm.location_details ? `— ${atm.location_details}` : ''}
                     </option>
                   ))}
-                </datalist>
+                </select>
               </div>
 
               <div>
