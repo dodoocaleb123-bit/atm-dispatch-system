@@ -9,7 +9,7 @@ export default function BankDashboard() {
   const [bank, setBank] = useState(null);
   const [atms, setAtms] = useState([]);
   const [tickets, setTickets] = useState([]);
-  const [selectedAtmId, setSelectedAtmId] = useState('');
+  const [selectedAtmUuid, setSelectedAtmUuid] = useState('');
   const [priority, setPriority] = useState('CRITICAL');
   const [faultDescription, setFaultDescription] = useState('');
   const [message, setMessage] = useState('');
@@ -98,8 +98,8 @@ export default function BankDashboard() {
 
   const handleSubmitTicket = async (e) => {
     e.preventDefault();
-    if (!bank || !selectedAtmId) {
-      setMessage('Please select a valid ATM terminal.');
+    if (!bank || !selectedAtmUuid) {
+      setMessage('Please select a valid ATM terminal from the dropdown.');
       return;
     }
     setLoading(true);
@@ -108,7 +108,7 @@ export default function BankDashboard() {
     const { error } = await supabase.from('service_tickets').insert([
       {
         bank_id: bank.id,
-        atm_id: selectedAtmId, // Strictly passes the ATM UUID
+        atm_id: selectedAtmUuid, // Explicitly passing the UUID
         fault_description: faultDescription,
         priority: priority,
         status: 'PENDING',
@@ -120,7 +120,7 @@ export default function BankDashboard() {
     if (!error) {
       setMessage('Fault ticket successfully filed.');
       setFaultDescription('');
-      setSelectedAtmId('');
+      setSelectedAtmUuid('');
       fetchDashboardData(bank);
     } else {
       setMessage(`Submission error: ${error.message}`);
@@ -209,21 +209,21 @@ export default function BankDashboard() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
-                  Select ATM Terminal
+                  Select ATM Terminal ID
                 </label>
                 <select
-                  value={selectedAtmId}
-                  onChange={(e) => setSelectedAtmId(e.target.value)}
+                  value={selectedAtmUuid}
+                  onChange={(e) => setSelectedAtmUuid(e.target.value)}
                   className="w-full bg-slate-950 border border-slate-800 text-white rounded-xl px-4 py-3 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
                   required
                 >
                   <option value="">-- Choose an ATM Terminal --</option>
                   {atms.map((atm) => {
-                    const atmId = atm.id || atm.atm_id;
-                    const atmLabel = atm.serial_number || atm.atm_serial || atm.id;
+                    const currentUuid = atm.id; // Database primary key UUID
+                    const displayIdentifier = atm.serial_number || atm.atm_serial || atm.id;
                     return (
-                      <option key={atmId} value={atmId}>
-                        {atmLabel} {atm.location_details ? `— ${atm.location_details}` : ''}
+                      <option key={currentUuid} value={currentUuid}>
+                        {displayIdentifier} {atm.location_details ? `— ${atm.location_details}` : ''}
                       </option>
                     );
                   })}
@@ -300,7 +300,7 @@ export default function BankDashboard() {
                   {tickets.map((t) => (
                     <tr key={t.id} className="hover:bg-slate-800/40 transition">
                       <td className="p-4 font-mono font-semibold text-blue-400">
-                        {t.atm_id || 'Terminal'}
+                        {t.atm_id}
                       </td>
                       <td className="p-4 text-slate-200 font-medium">
                         {t.fault_description || t.description}
