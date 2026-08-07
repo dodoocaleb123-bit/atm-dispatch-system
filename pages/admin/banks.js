@@ -16,16 +16,16 @@ export default function AddBankModal({ onBankCreated }) {
   try {
     // Exact column match with your Supabase table schema
     const { data, error } = await supabase
-      .from('banks')
-      .insert([
-        {
-          name: bankName,
-          bank_code: bankCode.trim().toUpperCase(), // Matches 'bank_code' column
-          access_key: password,                    // Matches 'access_key' column
-          status: 'ACTIVE',                        // Matches 'status' column
-        },
-      ])
-      .select();
+  .from('banks')
+  .insert([
+    {
+      name: bankName,
+      bank_code: bankCode.trim().toUpperCase(), // 👈 Make sure key is 'bank_code'
+      access_key: password,                    // 👈 Make sure key is 'access_key'
+      status: 'ACTIVE',
+    },
+  ])
+  .select();
 
     if (error) {
       setErrorMessage(error.message);
