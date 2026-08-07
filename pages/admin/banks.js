@@ -9,42 +9,40 @@ export default function AddBankModal({ onBankCreated }) {
   const [errorMessage, setErrorMessage] = useState('');
 
   const handleRegisterBank = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setErrorMessage('');
+  e.preventDefault();
+  setLoading(true);
+  setErrorMessage('');
 
-    // Generate clean slug from bank code
-    const generatedSlug = bankCode.trim().toLowerCase().replace(/[^a-z0-9]/g, '-');
+  try {
+    // Exact column match with your Supabase table schema
+    const { data, error } = await supabase
+      .from('banks')
+      .insert([
+        {
+          name: bankName,
+          bank_code: bankCode.trim().toUpperCase(), // Matches 'bank_code' column
+          access_key: password,                    // Matches 'access_key' column
+          status: 'ACTIVE',                        // Matches 'status' column
+        },
+      ])
+      .select();
 
-    try {
-      const { data, error } = await supabase
-  .from('banks')
-  .insert([
-    {
-      name: bankName,
-      username: bankCode, // Storing code here as username
-      password: password,
-      slug: generatedSlug,
-      // Removed "code: bankCode" since that column doesn't exist in Supabase
-    },
-  ])
-  .select(); // <-- CRITICAL: Added .select() to prevent API URL path errors
-
-      if (error) {
-        setErrorMessage(error.message);
-      } else {
-        alert(`Bank created successfully!\nLogin URL: /bank/${generatedSlug}/dashboard`);
-        setBankName('');
-        setBankCode('');
-        setPassword('');
-        if (onBankCreated) onBankCreated();
-      }
-    } catch (err) {
-      setErrorMessage(err.message || 'An unexpected error occurred');
-    } finally {
-      setLoading(false);
+    if (error) {
+      setErrorMessage(error.message);
+    } else {
+      const generatedSlug = bankCode.trim().toLowerCase();
+      alert(`Bank created successfully!\nLogin URL: /bank/${generatedSlug}/dashboard`);
+      setBankName('');
+      setBankCode('');
+      setPassword('');
+      if (onBankCreated) onBankCreated();
     }
-  };
+  } catch (err) {
+    setErrorMessage(err.message || 'An unexpected error occurred');
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-xl max-w-2xl mx-auto">

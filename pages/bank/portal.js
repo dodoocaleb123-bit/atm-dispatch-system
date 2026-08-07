@@ -15,18 +15,19 @@ export default function BankLogin() {
     setErrorMsg('');
 
     try {
+      // 🚨 REPLACED: Updated to match your database columns (bank_code & access_key)
       const { data: bank, error } = await supabase
         .from('banks')
         .select('*')
-        .eq('username', username)
-        .eq('password', password)
+        .eq('bank_code', username.trim().toUpperCase())
+        .eq('access_key', password)
         .single();
 
       if (bank && !error) {
-        // Redirects to /bank/[slug]/dashboard
-        router.push(`/bank/${bank.slug}/dashboard`);
+        // Redirects using the bank_code as the slug (e.g. /bank/cbg/dashboard)
+        router.push(`/bank/${bank.bank_code.toLowerCase()}/dashboard`);
       } else {
-        setErrorMsg('Invalid Bank Username or Password.');
+        setErrorMsg('Invalid Bank Code or Access Key.');
       }
     } catch (err) {
       setErrorMsg('Login failed. Please check credentials.');
@@ -55,7 +56,7 @@ export default function BankLogin() {
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
             <label className="block text-xs font-semibold text-slate-400 uppercase mb-1">
-              Bank Username
+              Bank Code / Acronym
             </label>
             <input
               type="text"
@@ -69,7 +70,7 @@ export default function BankLogin() {
 
           <div>
             <label className="block text-xs font-semibold text-slate-400 uppercase mb-1">
-              Password
+              Access Key / Password
             </label>
             <input
               type="password"
