@@ -40,7 +40,6 @@ export default function BankDashboard() {
 
       if (ticketError) console.error('Ticket Fetch Error:', ticketError.message);
 
-      // Filter tickets belonging to this bank portal
       const bankTickets = (ticketData || []).filter(t => 
         t.bank_code?.toString().toLowerCase() === bankCode.toString().toLowerCase() ||
         t.bank_id === currentBank.id ||
@@ -68,11 +67,11 @@ export default function BankDashboard() {
     const loadBankBySlug = async () => {
       setLoading(true);
       try {
-        // Direct query lookup instead of pulling a massive list of all banks
+        // Updated query using only columns that exist (slug, bank_code)
         const { data: matchedBanks, error } = await supabase
           .from('banks')
           .select('*')
-          .or(`slug.eq.${targetSlug},bank_code.eq.${targetSlug},acronym.eq.${targetSlug}`)
+          .or(`slug.eq.${targetSlug},bank_code.eq.${targetSlug}`)
           .limit(1);
 
         if (error) {
