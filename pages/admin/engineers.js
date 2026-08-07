@@ -43,7 +43,7 @@ export default function AdminEngineersPage() {
       const payload = {
         name: name.trim(),
         engineer_code: formattedCode,
-        access_password: password.trim(),
+        password: password.trim(), // Fixed to match standard Supabase column schema
         status: 'ACTIVE',
       };
 
@@ -166,7 +166,7 @@ export default function AdminEngineersPage() {
                   </p>
                   {/* Password with multi-column fallback */}
                   <p className="text-slate-500 text-[10px] font-mono">
-                    Password: <span className="text-slate-300 font-semibold">{eng.access_password || eng.access_key || 'N/A'}</span>
+                    Password: <span className="text-slate-300 font-semibold">{eng.password || eng.access_password || eng.access_key || 'N/A'}</span>
                   </p>
                 </div>
                 <div>
