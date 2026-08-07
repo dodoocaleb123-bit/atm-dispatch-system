@@ -25,10 +25,15 @@ export default function BankDashboard() {
       if (atmError) console.error('ATM Fetch Error:', atmError.message);
 
       const bankAtms = (atmData || []).filter(a => 
-        (a.bank_code && a.bank_code.toString().toLowerCase() === bankCode.toLowerCase()) ||
-        a.bank_id === currentBank.id
-      );
-      setAtms(bankAtms);
+  (a.bank_code && a.bank_code.toString().toLowerCase() === bankCode.toLowerCase()) ||
+  a.bank_id === currentBank.id
+);
+setAtms(bankAtms);
+
+// Automatically select the first ATM's UUID if available
+if (bankAtms.length > 0 && !selectedAtmUuid) {
+  setSelectedAtmUuid(bankAtms[0].id);
+}
 
       // 2. Fetch service tickets for this bank
       const { data: ticketData, error: ticketError } = await supabase
@@ -212,22 +217,17 @@ export default function BankDashboard() {
                   Select ATM Terminal ID
                 </label>
                 <select
-                  value={selectedAtmUuid}
-                  onChange={(e) => setSelectedAtmUuid(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 text-white rounded-xl px-4 py-3 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
-                  required
-                >
-                  <option value="">-- Choose an ATM Terminal --</option>
-                  {atms.map((atm) => {
-                    const currentUuid = atm.id;
-                    const displayIdentifier = atm.serial_number || atm.atm_serial || atm.id;
-                    return (
-                      <option key={currentUuid} value={currentUuid}>
-                        {displayIdentifier} {atm.location_details ? `— ${atm.location_details}` : ''}
-                      </option>
-                    );
-                  })}
-                </select>
+  value={selectedAtmUuid}
+  onChange={(e) => setSelectedAtmUuid(e.target.value)}
+  className="w-full bg-slate-950 border border-slate-800 text-white rounded-xl px-4 py-3 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+  required
+>
+  {atms.map((atm) => (
+    <option key={atm.id} value={atm.id}>
+      {atm.serial_number || atm.atm_serial || `Terminal ID: ${atm.id}`}
+    </option>
+  ))}
+</select>
               </div>
 
               <div>
