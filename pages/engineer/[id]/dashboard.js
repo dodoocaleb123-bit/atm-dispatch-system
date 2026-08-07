@@ -79,8 +79,7 @@ export default function EngineerDashboard() {
     const { error } = await supabase
       .from('service_tickets')
       .update({ 
-        status: 'RESOLVED',
-        resolved_at: new Date().toISOString()
+        status: 'RESOLVED'
       })
       .eq('id', ticketId);
 
