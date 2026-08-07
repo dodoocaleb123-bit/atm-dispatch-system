@@ -111,12 +111,12 @@ export default function BankDashboard() {
     setLoading(true);
     setMessage('');
 
-    // Removed 'bank_code' from the payload to match your Supabase table schema
+    // Updated 'description' to match Supabase table column cache schema
     const { error } = await supabase.from('service_tickets').insert([
       {
         bank_id: bank.id,
         atm_id: selectedAtm,
-        issue_description: faultDescription,
+        description: faultDescription,
         priority: priority,
         status: 'PENDING',
       },
@@ -309,7 +309,7 @@ export default function BankDashboard() {
                         {t.atm_id || 'Terminal'}
                       </td>
                       <td className="p-4 text-slate-200 font-medium">
-                        {t.issue_description || t.description || t.fault}
+                        {t.description || t.issue_description || t.fault}
                       </td>
                       <td className="p-4">
                         <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-bold bg-red-500/10 text-red-400 border border-red-500/20">
