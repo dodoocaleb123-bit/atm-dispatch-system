@@ -75,7 +75,6 @@ export default function BankDashboard() {
           return;
         }
 
-        // Flexible matching against any potential column name in your table
         const matchedBank = (banks || []).find(b => {
           const bSlug = (b.slug || '').toString().trim().toLowerCase();
           const bCode = (b.bank_code || '').toString().trim().toLowerCase();
@@ -220,21 +219,24 @@ export default function BankDashboard() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
-                  Select Affected ATM
+                  ATM ID / Serial Number
                 </label>
-                <select
+                <input
+                  type="text"
+                  list="atm-list"
                   value={selectedAtm}
                   onChange={(e) => setSelectedAtm(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 text-white rounded-xl px-4 py-3 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                  placeholder="Type or select ATM ID..."
+                  className="w-full bg-slate-950 border border-slate-800 text-white placeholder-slate-600 rounded-xl px-4 py-3 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
                   required
-                >
-                  <option value="" disabled>Choose an ATM Unit...</option>
+                />
+                <datalist id="atm-list">
                   {atms.map((atm) => (
                     <option key={atm.id} value={atm.serial_number || atm.atm_serial || atm.id}>
-                      {atm.serial_number || atm.atm_serial} — {atm.location_details || 'Branch Unit'}
+                      {atm.location_details ? `${atm.location_details}` : ''}
                     </option>
                   ))}
-                </select>
+                </datalist>
               </div>
 
               <div>
