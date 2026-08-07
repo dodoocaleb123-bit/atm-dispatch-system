@@ -219,7 +219,7 @@ export default function BankDashboard() {
                 >
                   <option value="">-- Choose an ATM Terminal --</option>
                   {atms.map((atm) => {
-                    const currentUuid = atm.id; // Database primary key UUID
+                    const currentUuid = atm.id;
                     const displayIdentifier = atm.serial_number || atm.atm_serial || atm.id;
                     return (
                       <option key={currentUuid} value={currentUuid}>
