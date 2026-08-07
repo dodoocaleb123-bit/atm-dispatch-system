@@ -103,6 +103,46 @@ export default function AdminDispatch() {
                 <p className="text-xs text-slate-300 font-semibold">Bank: {ticket.banks?.name || ticket.banks?.bank_name || 'N/A'}</p>
                 <p className="text-xs text-slate-200">{ticket.description}</p>
                 <p className="text-[11px] text-slate-400 font-mono">Location: {ticket.atms?.location_details}</p>
+
+                {/* Engineer Assignment Section */}
+                <div className="pt-3 border-t border-slate-800 flex flex-col sm:flex-row items-center gap-3">
+                  <select
+                    className="w-full sm:w-auto flex-1 bg-slate-950 border border-slate-800 text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    value={ticket.assigned_engineer_id || ''}
+                    onChange={async (e) => {
+                      const selectedEngId = e.target.value;
+                      
+                      // Update the ticket in Supabase
+                      const { error } = await supabase
+                        .from('service_tickets')
+                        .update({ 
+                          assigned_engineer_id: selectedEngId || null, 
+                          status: selectedEngId ? 'ASSIGNED' : 'PENDING',
+                          assigned_at: selectedEngId ? new Date().toISOString() : null
+                        })
+                        .eq('id', ticket.id);
+
+                      if (!error) {
+                        // Refresh local state and show feedback message
+                        setTickets(tickets.map(t => t.id === ticket.id ? { 
+                          ...t, 
+                          assigned_engineer_id: selectedEngId, 
+                          status: selectedEngId ? 'ASSIGNED' : 'PENDING' 
+                        } : t));
+                        setMessage('Engineer assignment successfully updated.');
+                      } else {
+                        setMessage(`Error assigning engineer: ${error.message}`);
+                      }
+                    }}
+                  >
+                    <option value="">-- Select Engineer to Assign --</option>
+                    {engineers.map((eng) => (
+                      <option key={eng.id} value={eng.id}>
+                        {eng.name || eng.full_name || eng.email}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
             ))}
           </div>
