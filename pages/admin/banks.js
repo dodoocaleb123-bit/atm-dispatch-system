@@ -9,40 +9,49 @@ export default function AddBankModal({ onBankCreated }) {
   const [errorMessage, setErrorMessage] = useState('');
 
   const handleRegisterBank = async (e) => {
-  e.preventDefault();
-  setLoading(true);
-  setErrorMessage('');
+    e.preventDefault();
+    setLoading(true);
+    setErrorMessage('');
 
-  try {
-    // Exact column match with your Supabase table schema
-    const { data, error } = await supabase
-  .from('banks')
-  .insert([
-    {
-      name: bankName,
-      bank_code: bankCode.trim().toUpperCase(), // 👈 Make sure key is 'bank_code'
-      access_key: password,                    // 👈 Make sure key is 'access_key'
-      status: 'ACTIVE',
-    },
-  ])
-  .select();
+    const formattedCode = bankCode.trim().toUpperCase();
 
-    if (error) {
-      setErrorMessage(error.message);
-    } else {
-      const generatedSlug = bankCode.trim().toLowerCase();
-      alert(`Bank created successfully!\nLogin URL: /bank/${generatedSlug}/dashboard`);
-      setBankName('');
-      setBankCode('');
-      setPassword('');
-      if (onBankCreated) onBankCreated();
+    if (!formattedCode) {
+      setErrorMessage('Bank Code is required.');
+      setLoading(false);
+      return;
     }
-  } catch (err) {
-    setErrorMessage(err.message || 'An unexpected error occurred');
-  } finally {
-    setLoading(false);
-  }
-};
+
+    try {
+      // 🚨 Formatted payload matching exact database schema
+      const payload = {
+        name: bankName.trim(),
+        bank_code: formattedCode,
+        access_key: password.trim(),
+        status: 'ACTIVE',
+      };
+
+      const { data, error } = await supabase
+        .from('banks')
+        .insert([payload])
+        .select();
+
+      if (error) {
+        console.error('Supabase Insert Error:', error);
+        setErrorMessage(error.message);
+      } else {
+        const generatedSlug = formattedCode.toLowerCase();
+        alert(`Bank created successfully!\nLogin URL: /bank/${generatedSlug}/dashboard`);
+        setBankName('');
+        setBankCode('');
+        setPassword('');
+        if (onBankCreated) onBankCreated();
+      }
+    } catch (err) {
+      setErrorMessage(err.message || 'An unexpected error occurred');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-xl max-w-2xl mx-auto">
