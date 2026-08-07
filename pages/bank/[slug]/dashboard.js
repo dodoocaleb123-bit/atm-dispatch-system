@@ -113,12 +113,12 @@ export default function BankDashboard() {
 
     const bankCode = bank.bank_code || bank.slug || slug;
 
+    // Removed 'atm_serial' to match your Supabase database table schema requirements
     const { error } = await supabase.from('service_tickets').insert([
       {
         bank_code: bankCode,
         bank_id: bank.id,
         atm_id: selectedAtm,
-        atm_serial: selectedAtm,
         issue_description: faultDescription,
         priority: priority,
         status: 'PENDING',
@@ -298,7 +298,7 @@ export default function BankDashboard() {
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-slate-950/50 text-slate-400 text-xs uppercase tracking-wider border-b border-slate-800">
-                    <th className="p-4">ATM Serial</th>
+                    <th className="p-4">ATM ID</th>
                     <th className="p-4">Fault Description</th>
                     <th className="p-4">Priority</th>
                     <th className="p-4">Status</th>
@@ -309,7 +309,7 @@ export default function BankDashboard() {
                   {tickets.map((t) => (
                     <tr key={t.id} className="hover:bg-slate-800/40 transition">
                       <td className="p-4 font-mono font-semibold text-blue-400">
-                        {t.atm_serial || t.atm_id || 'Terminal'}
+                        {t.atm_id || 'Terminal'}
                       </td>
                       <td className="p-4 text-slate-200 font-medium">
                         {t.issue_description || t.description || t.fault}
