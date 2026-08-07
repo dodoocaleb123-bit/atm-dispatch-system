@@ -20,19 +20,19 @@ export default function BankDashboard() {
     try {
       const bankCode = currentBank.bank_code || currentBank.slug || slug;
 
-      // 1. Fetch ATMs directly filtered by this bank's code/ID
-      const { data: atmData, error: atmError } = await supabase
-        .from('atms')
-        .select('*')
-        .or(`bank_code.eq.${bankCode},bank_id.eq.${currentBank.id}`);
-
+      // 1. Fetch ATMs associated with this bank
+      const { data: atmData, error: atmError } = await supabase.from('atms').select('*');
       if (atmError) console.error('ATM Fetch Error:', atmError.message);
-      const bankAtms = atmData || [];
+
+      const bankAtms = (atmData || []).filter(a => 
+        (a.bank_code && a.bank_code.toString().toLowerCase() === bankCode.toLowerCase()) ||
+        a.bank_id === currentBank.id
+      );
       setAtms(bankAtms);
 
       const atmSerials = bankAtms.map(a => a.serial_number || a.atm_serial || a.id);
 
-      // 2. Fetch service tickets for this bank or its specific ATMs
+      // 2. Fetch service tickets for this bank
       const { data: ticketData, error: ticketError } = await supabase
         .from('service_tickets')
         .select('*')
@@ -41,7 +41,7 @@ export default function BankDashboard() {
       if (ticketError) console.error('Ticket Fetch Error:', ticketError.message);
 
       const bankTickets = (ticketData || []).filter(t => 
-        t.bank_code?.toString().toLowerCase() === bankCode.toString().toLowerCase() ||
+        (t.bank_code && t.bank_code.toString().toLowerCase() === bankCode.toLowerCase()) ||
         t.bank_id === currentBank.id ||
         atmSerials.includes(t.atm_serial) ||
         atmSerials.includes(t.atm_id)
@@ -67,12 +67,8 @@ export default function BankDashboard() {
     const loadBankBySlug = async () => {
       setLoading(true);
       try {
-        // Updated query using only columns that exist (slug, bank_code)
-        const { data: matchedBanks, error } = await supabase
-          .from('banks')
-          .select('*')
-          .or(`slug.eq.${targetSlug},bank_code.eq.${targetSlug}`)
-          .limit(1);
+        // Fetch all banks and safely match in JS to avoid any column filter errors
+        const { data: banks, error } = await supabase.from('banks').select('*');
 
         if (error) {
           setDebugInfo(`Database query error: ${error.message}`);
@@ -80,10 +76,15 @@ export default function BankDashboard() {
           return;
         }
 
-        if (matchedBanks && matchedBanks.length > 0) {
-          const currentBank = matchedBanks[0];
-          setBank(currentBank);
-          await fetchDashboardData(currentBank);
+        const matchedBank = (banks || []).find(b => {
+          const bSlug = (b.slug || '').toString().toLowerCase();
+          const bCode = (b.bank_code || '').toString().toLowerCase();
+          return bSlug === targetSlug || bCode === targetSlug;
+        });
+
+        if (matchedBank) {
+          setBank(matchedBank);
+          await fetchDashboardData(matchedBank);
         } else {
           setDebugInfo(`Bank handle "${targetSlug}" does not exist.`);
         }
