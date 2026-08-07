@@ -1,6 +1,9 @@
 import Link from 'next/link';
+import { useRouter } from 'next/router';
 
 export default function CEODashboard() {
+  const router = useRouter();
+
   const managementCards = [
     {
       title: 'Manage Banks',
@@ -28,6 +31,15 @@ export default function CEODashboard() {
       actionText: 'Go to Dispatch Hub →',
       color: 'from-purple-600/20 to-purple-900/10 border-purple-500/30 hover:border-purple-500/60',
       badgeColor: 'bg-purple-500/20 text-purple-300',
+    },
+    {
+      title: 'ATM Infrastructure',
+      description: 'View registered partner banks and manage their assigned ATMs, locations, and terminal setups.',
+      icon: '🏧',
+      href: '/admin/atms',
+      actionText: 'Open ATM Management →',
+      color: 'from-amber-600/20 to-amber-900/10 border-amber-500/30 hover:border-amber-500/60',
+      badgeColor: 'bg-amber-500/20 text-amber-300',
     },
   ];
 
@@ -62,17 +74,17 @@ export default function CEODashboard() {
           <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-gradient-to-l from-purple-600/10 to-transparent pointer-events-none" />
           <h2 className="text-2xl font-bold text-white mb-2">Welcome Back, Executive</h2>
           <p className="text-xs sm:text-sm text-slate-400 max-w-2xl leading-relaxed">
-            Select a management module below to onboard partners, manage field engineers, or handle dispatch assignments for active ATM incident tickets.
+            Select a management module below to onboard partners, manage field engineers, oversee ATM terminal locations, or handle dispatch assignments for active incident tickets.
           </p>
         </div>
 
         {/* Navigation Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {managementCards.map((card, idx) => (
-            <Link
+            <div
               key={idx}
-              href={card.href}
-              className={`bg-slate-900 border rounded-2xl p-6 flex flex-col justify-between transition-all duration-300 hover:-translate-y-1 shadow-xl bg-gradient-to-br ${card.color} group`}
+              onClick={() => router.push(card.href)}
+              className={`bg-slate-900 border rounded-2xl p-6 flex flex-col justify-between transition-all duration-300 hover:-translate-y-1 shadow-xl bg-gradient-to-br ${card.color} group cursor-pointer`}
             >
               <div className="space-y-4">
                 <div className="flex justify-between items-start">
@@ -97,7 +109,7 @@ export default function CEODashboard() {
               <div className="pt-6 mt-6 border-t border-slate-800/60 flex items-center justify-between text-xs font-semibold text-slate-300 group-hover:text-white">
                 <span>{card.actionText}</span>
               </div>
-            </Link>
+            </div>
           ))}
         </div>
       </main>
