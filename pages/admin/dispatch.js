@@ -94,7 +94,7 @@ export default function AdminDispatch() {
               <div key={ticket.id} className="bg-slate-900 border border-slate-800 p-5 rounded-xl space-y-3">
                 <div className="flex justify-between items-start">
                   <span className="font-mono text-xs font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded">
-                    {ticket.atms?.atm_serial || 'ATM Terminal'}
+                    {ticket.atms?.serial_number || ticket.atms?.atm_serial || 'ATM Terminal'}
                   </span>
                   <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-slate-800 text-slate-300">
                     {ticket.status || 'Pending'}
@@ -111,23 +111,26 @@ export default function AdminDispatch() {
                     value={ticket.assigned_engineer_id || ''}
                     onChange={async (e) => {
                       const selectedEngId = e.target.value;
+                      const engineerIdToSave = selectedEngId === '' ? null : selectedEngId;
                       
                       // Update the ticket in Supabase
                       const { error } = await supabase
                         .from('service_tickets')
                         .update({ 
-                          assigned_engineer_id: selectedEngId || null, 
-                          status: selectedEngId ? 'ASSIGNED' : 'PENDING',
-                          assigned_at: selectedEngId ? new Date().toISOString() : null
+                          assigned_engineer_id: engineerIdToSave, 
+                          status: engineerIdToSave ? 'ASSIGNED' : 'PENDING',
+                          assigned_at: engineerIdToSave ? new Date().toISOString() : null
                         })
                         .eq('id', ticket.id);
 
                       if (!error) {
+                        const matchedEng = engineers.find(eng => eng.id === engineerIdToSave);
                         // Refresh local state and show feedback message
                         setTickets(tickets.map(t => t.id === ticket.id ? { 
                           ...t, 
-                          assigned_engineer_id: selectedEngId, 
-                          status: selectedEngId ? 'ASSIGNED' : 'PENDING' 
+                          assigned_engineer_id: engineerIdToSave, 
+                          engineers: matchedEng || null,
+                          status: engineerIdToSave ? 'ASSIGNED' : 'PENDING' 
                         } : t));
                         setMessage('Engineer assignment successfully updated.');
                       } else {
