@@ -16,7 +16,8 @@ export default function AdminEngineersPage() {
     setFetchingEngineers(true);
     const { data, error } = await supabase
       .from('engineers')
-      .select('*');
+      .select('*')
+      .order('created_at', { ascending: false });
 
     if (error) {
       console.error('Error fetching engineers:', error.message);
@@ -42,7 +43,7 @@ export default function AdminEngineersPage() {
       const payload = {
         name: name.trim(),
         engineer_code: formattedCode,
-        access_key: password.trim(),
+        access_password: password.trim(),
         status: 'ACTIVE',
       };
 
@@ -70,7 +71,7 @@ export default function AdminEngineersPage() {
 
   return (
     <div className="min-h-screen bg-slate-950 p-6 space-y-8 text-white">
-      {/* Registration Form */}
+      {/* ==================== FORM SECTION ==================== */}
       <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-xl max-w-4xl mx-auto">
         <h3 className="text-lg font-bold text-white mb-4">Register Field Engineer</h3>
 
@@ -135,9 +136,17 @@ export default function AdminEngineersPage() {
         </form>
       </div>
 
-      {/* Engineer Directory */}
+      {/* ==================== ENGINEER DIRECTORY ==================== */}
       <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-xl max-w-4xl mx-auto">
-        <h3 className="text-lg font-bold text-white mb-4">Active Field Engineers</h3>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-bold text-white">Active Field Engineers</h3>
+          <button 
+            onClick={fetchEngineers} 
+            className="text-xs text-blue-400 hover:text-blue-300 font-semibold"
+          >
+            ↻ Refresh List
+          </button>
+        </div>
 
         {fetchingEngineers ? (
           <p className="text-slate-400 text-xs text-center py-4">Loading engineers...</p>
@@ -146,14 +155,25 @@ export default function AdminEngineersPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {engineers.map((eng) => (
-              <div key={eng.id} className="p-4 bg-slate-950 border border-slate-800 rounded-xl flex items-center justify-between">
-                <div>
+              <div 
+                key={eng.id || eng.engineer_code} 
+                className="p-4 bg-slate-950 border border-slate-800 rounded-xl flex items-center justify-between"
+              >
+                <div className="space-y-1">
                   <p className="font-bold text-white text-sm">{eng.name}</p>
-                  <p className="text-slate-400 font-mono text-xs">Code: <span className="text-blue-400">{eng.engineer_code}</span></p>
+                  <p className="text-slate-400 font-mono text-xs">
+                    Code: <span className="text-blue-400 font-bold">{eng.engineer_code}</span>
+                  </p>
+                  {/* 👈 Password display line added here */}
+                  <p className="text-slate-500 text-[10px] font-mono">
+                    Password: <span className="text-slate-300 font-semibold">{eng.access_password}</span>
+                  </p>
                 </div>
-                <span className="px-2.5 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full text-[10px] font-bold">
-                  {eng.status || 'ACTIVE'}
-                </span>
+                <div>
+                  <span className="px-2.5 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full text-[10px] font-bold uppercase tracking-wider">
+                    {eng.status || 'ACTIVE'}
+                  </span>
+                </div>
               </div>
             ))}
           </div>
