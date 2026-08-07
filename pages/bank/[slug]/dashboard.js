@@ -31,6 +31,7 @@ export default function BankDashboard() {
 setAtms(bankAtms);
 
 // Automatically select the first ATM's UUID if available
+// Automatically select the first ATM's UUID if available
 if (bankAtms.length > 0 && !selectedAtmUuid) {
   setSelectedAtmUuid(bankAtms[0].id);
 }
