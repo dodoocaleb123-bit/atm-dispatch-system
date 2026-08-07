@@ -16,45 +16,41 @@ export default function BankDashboard() {
   const [loading, setLoading] = useState(true);
   const [debugInfo, setDebugInfo] = useState('');
 
-  const fetchBankData = async (matchedBank) => {
+  const fetchDashboardData = async (currentBank) => {
     try {
-      const bankIdentifier = matchedBank.bank_code || matchedBank.slug || slug;
+      const bankCode = currentBank.bank_code || currentBank.slug || slug;
 
-      // 1. Fetch ONLY ATMs belonging to this specific bank
+      // 1. Fetch ATMs directly filtered by this bank's code/ID
       const { data: atmData, error: atmError } = await supabase
         .from('atms')
         .select('*')
-        .eq('bank_code', bankIdentifier);
+        .or(`bank_code.eq.${bankCode},bank_id.eq.${currentBank.id}`);
 
-      if (atmError) console.error('Error fetching ATMs:', atmError.message);
-      
+      if (atmError) console.error('ATM Fetch Error:', atmError.message);
       const bankAtms = atmData || [];
       setAtms(bankAtms);
 
-      // Extract serial numbers or IDs of this bank's ATMs for ticket matching
-      const bankAtmIds = bankAtms.map(a => a.serial_number || a.id || a.atm_id);
+      const atmSerials = bankAtms.map(a => a.serial_number || a.atm_serial || a.id);
 
-      // 2. Fetch service tickets linked to this bank's code or specific ATMs
+      // 2. Fetch service tickets for this bank or its specific ATMs
       const { data: ticketData, error: ticketError } = await supabase
         .from('service_tickets')
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (ticketError) console.error('Error fetching tickets:', ticketError.message);
+      if (ticketError) console.error('Ticket Fetch Error:', ticketError.message);
 
-      // Filter tickets strictly belonging to this bank
-      const bankTickets = (ticketData || []).filter(t => {
-        return (
-          t.bank_code === bankIdentifier || 
-          t.bank_id === matchedBank.id ||
-          bankAtmIds.includes(t.atm_id) ||
-          bankAtmIds.includes(t.atm_serial)
-        );
-      });
+      // Filter tickets belonging to this bank portal
+      const bankTickets = (ticketData || []).filter(t => 
+        t.bank_code?.toString().toLowerCase() === bankCode.toString().toLowerCase() ||
+        t.bank_id === currentBank.id ||
+        atmSerials.includes(t.atm_serial) ||
+        atmSerials.includes(t.atm_id)
+      );
 
       setTickets(bankTickets);
     } catch (err) {
-      console.error('Error in fetchBankData:', err);
+      console.error('Error loading dashboard data:', err);
     }
   };
 
@@ -64,43 +60,42 @@ export default function BankDashboard() {
     const targetSlug = slug ? slug.toString().trim().toLowerCase() : '';
 
     if (!targetSlug) {
-      setDebugInfo('No bank slug detected in URL path.');
+      setDebugInfo('No bank route identifier found.');
       setLoading(false);
       return;
     }
 
-    const verifyBankAndLoad = async () => {
+    const loadBankBySlug = async () => {
       setLoading(true);
       try {
-        const { data: banks, error } = await supabase.from('banks').select('*');
+        // Direct query lookup instead of pulling a massive list of all banks
+        const { data: matchedBanks, error } = await supabase
+          .from('banks')
+          .select('*')
+          .or(`slug.eq.${targetSlug},bank_code.eq.${targetSlug},acronym.eq.${targetSlug}`)
+          .limit(1);
 
         if (error) {
-          setDebugInfo(`Supabase Error: ${error.message}`);
+          setDebugInfo(`Database query error: ${error.message}`);
           setLoading(false);
           return;
         }
 
-        const matchedBank = banks.find((b) => {
-          const bCode = (b.bank_code || '').toString().toLowerCase();
-          const bAcronym = (b.acronym || '').toString().toLowerCase();
-          const bSlug = (b.slug || '').toString().toLowerCase();
-          return bCode === targetSlug || bAcronym === targetSlug || bSlug === targetSlug;
-        });
-
-        if (matchedBank) {
-          setBank(matchedBank);
-          await fetchBankData(matchedBank);
+        if (matchedBanks && matchedBanks.length > 0) {
+          const currentBank = matchedBanks[0];
+          setBank(currentBank);
+          await fetchDashboardData(currentBank);
         } else {
-          setDebugInfo(`Bank portal "${targetSlug}" not found or unauthorized access.`);
+          setDebugInfo(`Bank handle "${targetSlug}" does not exist.`);
         }
       } catch (err) {
-        setDebugInfo(`Unexpected error: ${err.message}`);
+        setDebugInfo(`Initialization error: ${err.message}`);
       } finally {
         setLoading(false);
       }
     };
 
-    verifyBankAndLoad();
+    loadBankBySlug();
   }, [router.isReady, slug]);
 
   const handleSubmitTicket = async (e) => {
@@ -109,11 +104,11 @@ export default function BankDashboard() {
     setLoading(true);
     setMessage('');
 
-    const bankIdentifier = bank.bank_code || bank.slug || slug;
+    const bankCode = bank.bank_code || bank.slug || slug;
 
     const { error } = await supabase.from('service_tickets').insert([
       {
-        bank_code: bankIdentifier,
+        bank_code: bankCode,
         bank_id: bank.id,
         atm_id: selectedAtm,
         atm_serial: selectedAtm,
@@ -126,12 +121,12 @@ export default function BankDashboard() {
     setLoading(false);
 
     if (!error) {
-      setMessage('Fault report submitted successfully to dispatch!');
+      setMessage('Fault ticket successfully filed.');
       setFaultDescription('');
       setSelectedAtm('');
-      fetchBankData(bank);
+      fetchDashboardData(bank);
     } else {
-      setMessage(`Error: ${error.message}`);
+      setMessage(`Submission error: ${error.message}`);
     }
   };
 
@@ -139,7 +134,7 @@ export default function BankDashboard() {
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-slate-400 text-xs space-y-3">
         <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-        <p>Loading secure bank portal...</p>
+        <p>Authenticating bank portal...</p>
       </div>
     );
   }
@@ -151,7 +146,7 @@ export default function BankDashboard() {
           <div className="w-10 h-10 bg-red-500/10 border border-red-500/20 text-red-400 rounded-xl flex items-center justify-center mx-auto text-lg">
             ⚠️
           </div>
-          <p className="text-red-400 text-xs font-mono">{debugInfo || 'Bank portal not found.'}</p>
+          <p className="text-red-400 text-xs font-mono">{debugInfo || 'Portal access restricted.'}</p>
           <button
             onClick={() => router.push('/bank/login')}
             className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white text-xs rounded-xl transition"
@@ -163,23 +158,21 @@ export default function BankDashboard() {
     );
   }
 
+  const bankName = bank.name || bank.bank_name || bank.bank_code || 'Bank';
   const pendingCount = tickets.filter((t) => t.status === 'PENDING').length;
   const completedCount = tickets.filter((t) => t.status === 'COMPLETED').length;
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans pb-12">
-      {/* Top Header with Unique Bank Branding */}
       <header className="bg-slate-900 border-b border-slate-800 sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
           <div className="flex items-center space-x-3">
-            <div className="w-9 h-9 bg-gradient-to-br from-blue-600 to-indigo-700 rounded-xl flex items-center justify-center font-bold text-lg shadow-md shadow-blue-500/20">
-              {(bank.name || bank.bank_name || bank.bank_code || 'B').charAt(0).toUpperCase()}
+            <div className="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center font-bold text-lg shadow-md shadow-blue-500/20">
+              {bankName.charAt(0)}
             </div>
             <div>
-              <h1 className="font-bold text-base leading-tight text-white">
-                {bank.name || bank.bank_name || bank.bank_code} Portal
-              </h1>
-              <p className="text-xs text-slate-400 font-mono">ID: {bank.bank_code || slug}</p>
+              <h1 className="font-bold text-base leading-tight text-white">{bankName} Portal</h1>
+              <p className="text-xs text-slate-400 font-mono">Secure Terminal Management Console</p>
             </div>
           </div>
           <button
@@ -192,18 +185,17 @@ export default function BankDashboard() {
       </header>
 
       <main className="max-w-7xl mx-auto px-6 pt-8 space-y-8">
-        {/* KPI Stats Bar (Specific to this bank) */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
           <div className="bg-slate-900 p-5 rounded-xl border border-slate-800 shadow-sm">
-            <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Assigned ATM Terminals</p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">Assigned Terminals</p>
             <p className="text-2xl font-bold text-white mt-1">{atms.length}</p>
           </div>
           <div className="bg-slate-900 p-5 rounded-xl border border-slate-800 shadow-sm">
-            <p className="text-xs font-semibold uppercase tracking-wider text-red-400">Pending Fault Tickets</p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-red-400">Pending Incidents</p>
             <p className="text-2xl font-bold text-red-400 mt-1">{pendingCount}</p>
           </div>
           <div className="bg-slate-900 p-5 rounded-xl border border-slate-800 shadow-sm">
-            <p className="text-xs font-semibold uppercase tracking-wider text-emerald-400">Resolved Issues</p>
+            <p className="text-xs font-semibold uppercase tracking-wider text-emerald-400">Resolved Faults</p>
             <p className="text-2xl font-bold text-emerald-400 mt-1">{completedCount}</p>
           </div>
         </div>
@@ -214,15 +206,13 @@ export default function BankDashboard() {
           </div>
         )}
 
-        {/* Log Fault Form */}
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 space-y-4 shadow-lg">
           <h2 className="text-base font-bold text-white">Log New ATM Fault Report</h2>
-
           <form onSubmit={handleSubmitTicket} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
-                  Select Affected ATM Terminal
+                  Select Affected ATM
                 </label>
                 <select
                   value={selectedAtm}
@@ -230,12 +220,10 @@ export default function BankDashboard() {
                   className="w-full bg-slate-950 border border-slate-800 text-white rounded-xl px-4 py-3 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
                   required
                 >
-                  <option value="" disabled>
-                    Choose an ATM Unit...
-                  </option>
+                  <option value="" disabled>Choose an ATM Unit...</option>
                   {atms.map((atm) => (
-                    <option key={atm.id} value={atm.serial_number || atm.id}>
-                      {atm.serial_number} — {atm.location_details || 'Branch Unit'}
+                    <option key={atm.id} value={atm.serial_number || atm.atm_serial || atm.id}>
+                      {atm.serial_number || atm.atm_serial} — {atm.location_details || 'Branch Unit'}
                     </option>
                   ))}
                 </select>
@@ -265,7 +253,7 @@ export default function BankDashboard() {
               <textarea
                 value={faultDescription}
                 onChange={(e) => setFaultDescription(e.target.value)}
-                placeholder="Describe the issue in detail..."
+                placeholder="Describe the issue..."
                 rows="3"
                 className="w-full bg-slate-950 border border-slate-800 text-white placeholder-slate-600 rounded-xl p-4 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
                 required
@@ -282,12 +270,11 @@ export default function BankDashboard() {
           </form>
         </div>
 
-        {/* Bank-Specific Tickets Table */}
         <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-lg">
           <div className="p-5 border-b border-slate-800 flex justify-between items-center">
-            <h2 className="text-base font-bold text-white">Your Bank's Service Tickets</h2>
+            <h2 className="text-base font-bold text-white">{bankName} Service Tickets</h2>
             <button
-              onClick={() => fetchBankData(bank)}
+              onClick={() => fetchDashboardData(bank)}
               className="text-xs text-blue-400 hover:text-blue-300 font-semibold"
             >
               🔄 Refresh Status
@@ -295,7 +282,7 @@ export default function BankDashboard() {
           </div>
 
           {tickets.length === 0 ? (
-            <p className="p-6 text-slate-500 text-xs">No service tickets found for this bank portal.</p>
+            <p className="p-6 text-slate-500 text-xs">No service tickets recorded for this bank.</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
@@ -312,7 +299,7 @@ export default function BankDashboard() {
                   {tickets.map((t) => (
                     <tr key={t.id} className="hover:bg-slate-800/40 transition">
                       <td className="p-4 font-mono font-semibold text-blue-400">
-                        {t.atm_id || t.atm_serial || 'ATM Unit'}
+                        {t.atm_serial || t.atm_id || 'Terminal'}
                       </td>
                       <td className="p-4 text-slate-200 font-medium">
                         {t.issue_description || t.description || t.fault}
