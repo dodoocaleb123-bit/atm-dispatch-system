@@ -67,7 +67,6 @@ export default function BankDashboard() {
     const loadBankBySlug = async () => {
       setLoading(true);
       try {
-        // Fetch all banks and safely match in JS to avoid any column filter errors
         const { data: banks, error } = await supabase.from('banks').select('*');
 
         if (error) {
@@ -76,17 +75,26 @@ export default function BankDashboard() {
           return;
         }
 
+        // Flexible matching against any potential column name in your table
         const matchedBank = (banks || []).find(b => {
-          const bSlug = (b.slug || '').toString().toLowerCase();
-          const bCode = (b.bank_code || '').toString().toLowerCase();
-          return bSlug === targetSlug || bCode === targetSlug;
+          const bSlug = (b.slug || '').toString().trim().toLowerCase();
+          const bCode = (b.bank_code || '').toString().trim().toLowerCase();
+          const bAltCode = (b.code || '').toString().trim().toLowerCase();
+          const bName = (b.name || b.bank_name || '').toString().trim().toLowerCase();
+          
+          return (
+            bSlug === targetSlug || 
+            bCode === targetSlug || 
+            bAltCode === targetSlug || 
+            bName.includes(targetSlug)
+          );
         });
 
         if (matchedBank) {
           setBank(matchedBank);
           await fetchDashboardData(matchedBank);
         } else {
-          setDebugInfo(`Bank handle "${targetSlug}" does not exist.`);
+          setDebugInfo(`Bank handle "${targetSlug}" does not exist in the database. Please check your 'banks' table entries.`);
         }
       } catch (err) {
         setDebugInfo(`Initialization error: ${err.message}`);
