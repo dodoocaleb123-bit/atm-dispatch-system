@@ -17,19 +17,25 @@ export default function EngineerLogin() {
     try {
       const formattedCode = engineerCode.trim().toUpperCase();
 
+      // 1. Fetch engineer record by ID/Code
       const { data: engineer, error } = await supabase
         .from('engineers')
         .select('*')
-        .eq('engineer_code', formattedCode)
-        .eq('access_password', password.trim())
+        .ilike('engineer_code', formattedCode)
         .single();
 
       if (engineer && !error) {
-        // Redirects to /engineer/[slug]/dashboard (e.g. /engineer/eng-001/dashboard)
-        router.push(`/engineer/${engineer.engineer_code.toLowerCase()}/dashboard`);
-      } else {
-        setErrorMsg('Invalid Engineer ID or Password.');
+        // 2. Validate password against access_password OR access_key fallback
+        const validPassword = engineer.access_password || engineer.access_key;
+
+        if (validPassword && validPassword === password.trim()) {
+          // Redirects to /engineer/[slug]/dashboard (e.g. /engineer/eng-002/dashboard)
+          router.push(`/engineer/${engineer.engineer_code.toLowerCase()}/dashboard`);
+          return;
+        }
       }
+
+      setErrorMsg('Invalid Engineer ID or Password.');
     } catch (err) {
       setErrorMsg('Login failed. Please check your credentials.');
     } finally {
