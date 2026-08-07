@@ -2,12 +2,11 @@ import { useState } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '../../lib/supabaseClient';
 
-export default function BankLogin() {
+export default function BankPortalPage() {
   const router = useRouter();
-  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [errorMsg, setErrorMsg] = useState('');
   const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -15,22 +14,32 @@ export default function BankLogin() {
     setErrorMsg('');
 
     try {
-      // 🚨 REPLACED: Updated to match your database columns (bank_code & access_key)
-      const { data: bank, error } = await supabase
-        .from('banks')
-        .select('*')
-        .eq('bank_code', username.trim().toUpperCase())
-        .eq('access_key', password)
-        .single();
+      const inputPassword = password.trim();
 
-      if (bank && !error) {
-        // Redirects using the bank_code as the slug (e.g. /bank/cbg/dashboard)
-        router.push(`/bank/${bank.bank_code.toLowerCase()}/dashboard`);
+      // Search for any bank matching this password (checking both column names)
+      const { data: banks, error } = await supabase
+        .from('banks')
+        .select('*');
+
+      if (error || !banks) {
+        setErrorMsg('System error. Please try again.');
+        return;
+      }
+
+      // Find the bank matching the password
+      const matchedBank = banks.find(
+        (b) => b.access_password === inputPassword || b.access_key === inputPassword
+      );
+
+      if (matchedBank) {
+        const slug = (matchedBank.bank_code || matchedBank.slug || matchedBank.acronym).toLowerCase();
+        // 🚀 Direct redirect to that bank's dashboard!
+        router.push(`/bank/${slug}/dashboard`);
       } else {
-        setErrorMsg('Invalid Bank Code or Access Key.');
+        setErrorMsg('Invalid Bank Password.');
       }
     } catch (err) {
-      setErrorMsg('Login failed. Please check credentials.');
+      setErrorMsg('Authentication failed.');
     } finally {
       setLoading(false);
     }
@@ -43,8 +52,10 @@ export default function BankLogin() {
           <div className="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center mx-auto text-2xl mb-3">
             🏛️
           </div>
-          <h1 className="text-xl font-bold text-white">Bank Partner Sign In</h1>
-          <p className="text-xs text-slate-400 mt-1">Enter credentials issued by System CEO</p>
+          <h1 className="text-xl font-bold text-white">Partner Bank Portal</h1>
+          <p className="text-xs text-slate-400 mt-1">
+            Enter your assigned Bank Password to access the portal
+          </p>
         </div>
 
         {errorMsg && (
@@ -56,27 +67,13 @@ export default function BankLogin() {
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
             <label className="block text-xs font-semibold text-slate-400 uppercase mb-1">
-              Bank Code / Acronym
-            </label>
-            <input
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              placeholder="e.g. CBG"
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-400 uppercase mb-1">
-              Access Key / Password
+              Bank Password
             </label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
+              placeholder="Enter bank login password..."
               className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
               required
             />
@@ -85,11 +82,15 @@ export default function BankLogin() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-bold py-3 rounded-xl text-xs transition"
+            className="w-full bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-bold py-3 rounded-xl text-xs transition shadow-lg shadow-blue-600/20"
           >
-            {loading ? 'Authenticating...' : 'Access Portal'}
+            {loading ? 'Authenticating...' : 'Access Incident Console'}
           </button>
         </form>
+
+        <p className="text-[10px] text-slate-500 text-center">
+          Authorized Banking Client Access Only • Managed by ATM Dispatch Enterprise
+        </p>
       </div>
     </div>
   );
